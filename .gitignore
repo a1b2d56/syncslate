@@ -1,0 +1,29 @@
+# Binary outputs
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test coverage
+*.out
+*.test
+
+# Environment & Config
+.env
+*.local
+
+# Database & Data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+uploads/
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
