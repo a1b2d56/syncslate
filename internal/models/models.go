@@ -11,6 +11,7 @@ type User struct {
 	AvatarMediaID *string   `json:"avatar_media_id,omitempty"`
 	Discoverable  bool      `json:"discoverable"`
 	GhostMode     bool      `json:"ghost_mode"`
+	LastSeen      *int64    `json:"last_seen,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
@@ -24,7 +25,8 @@ type UserProfile struct {
 	Discoverable  bool    `json:"discoverable"`
 	GhostMode     bool    `json:"ghost_mode"`
 	Status        string  `json:"status"`
-	LastSeen      *int64  `json:"last_seen,omitempty"`
+	LastSeen      *int64  `json:"lastSeen,omitempty"`
+	IsOnline      bool    `json:"isOnline"`
 }
 
 type Session struct {
@@ -37,11 +39,12 @@ type Session struct {
 }
 
 type Contact struct {
-	ID          string      `json:"id"`
-	OwnerID     string      `json:"owner_id"`
-	ContactID   string      `json:"contact_id"`
-	Profile     UserProfile `json:"profile"`
-	CreatedAt   time.Time   `json:"created_at"`
+	ID        string      `json:"id"`
+	OwnerID   string      `json:"owner_id"`
+	ContactID string      `json:"contactId"`
+	User      UserProfile `json:"user"`
+	Profile   UserProfile `json:"profile"`
+	CreatedAt time.Time   `json:"created_at"`
 }
 
 type MessageRequest struct {
@@ -56,14 +59,22 @@ type MessageRequest struct {
 }
 
 type Chat struct {
-	ID          string       `json:"id"`
-	Type        string       `json:"type"` // direct, group, channel
-	Name        *string      `json:"name,omitempty"`
-	Peer        *UserProfile `json:"peer,omitempty"`
-	LastMessage *Message     `json:"last_message,omitempty"`
-	UnreadCount int          `json:"unread_count"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
+	ID                   string       `json:"id"`
+	Type                 string       `json:"type"` // direct, group, channel, saved
+	Name                 *string      `json:"name,omitempty"`
+	Peer                 *UserProfile `json:"peer,omitempty"`
+	LastMessage          *Message     `json:"last_message,omitempty"`
+	UnreadCount          int          `json:"unread_count"`
+	IsMuted              bool         `json:"isMuted"`
+	MuteUntil            *int64       `json:"muteUntil,omitempty"`
+	MemberCount          int          `json:"memberCount"`
+	OnlineCount          int          `json:"onlineCount"`
+	PinnedMessageID      *string      `json:"pinnedMessageId,omitempty"`
+	PinnedMessageContent *string      `json:"pinnedMessageContent,omitempty"`
+	IsPinned             bool         `json:"isPinned"`
+	PinnedOrder          int          `json:"pinnedOrder"`
+	CreatedAt            time.Time    `json:"created_at"`
+	UpdatedAt            time.Time    `json:"updated_at"`
 }
 
 type ChatMember struct {
@@ -108,4 +119,16 @@ type Block struct {
 	BlockerID string    `json:"blocker_id"`
 	BlockedID string    `json:"blocked_id"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type ChatFolder struct {
+	ID          string   `json:"id"`
+	UserID      string   `json:"user_id"`
+	Name        string   `json:"name"`
+	Icon        string   `json:"icon"`
+	FilterFlags int      `json:"filterFlags"`
+	FolderOrder int      `json:"folderOrder"`
+	ChatIDs     []string `json:"chatIds"`
+	CreatedAt   int64    `json:"createdAt"`
+	UpdatedAt   int64    `json:"updatedAt"`
 }

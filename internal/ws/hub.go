@@ -34,7 +34,11 @@ func (h *Hub) Register(c *Client) {
 
 	slog.Info("ws client connected", "user_id", c.userID)
 
-	// Broadcast presence online if not Ghost Mode
+	// Send WS sync lifecycle events
+	c.SendJSON("sync:start", map[string]interface{}{"status": "syncing", "timestamp": time.Now().UnixMilli()})
+	c.SendJSON("sync:complete", map[string]interface{}{"status": "synced", "timestamp": time.Now().UnixMilli()})
+
+	// Update last_seen & broadcast presence online if not Ghost Mode
 	go h.handlePresenceChange(c.userID, "online")
 }
 
@@ -57,6 +61,15 @@ func (h *Hub) Unregister(c *Client) {
 	} else {
 		h.clients.Store(c.userID, clientMap)
 	}
+}
+
+func (h *Hub) IsUserOnline(userID string) bool {
+	val, exists := h.clients.Load(userID)
+	if !exists || val == nil {
+		return false
+	}
+	clientMap := val.(map[*Client]bool)
+	return len(clientMap) > 0
 }
 
 func (h *Hub) SendToUser(userID string, eventType string, payload interface{}) {
@@ -89,6 +102,9 @@ func (h *Hub) BroadcastToChat(chatID string, excludeUserID string, eventType str
 }
 
 func (h *Hub) handlePresenceChange(userID, status string) {
+	nowMs := time.Now().UnixMilli()
+	_, _ = h.db.Exec(`UPDATE users SET last_seen = ? WHERE id = ?`, nowMs, userID)
+
 	var ghostMode int
 	_ = h.db.QueryRow(`SELECT ghost_mode FROM users WHERE id = ?`, userID).Scan(&ghostMode)
 
@@ -109,8 +125,10 @@ func (h *Hub) handlePresenceChange(userID, status string) {
 	defer rows.Close()
 
 	payload := map[string]interface{}{
-		"user_id": userID,
-		"status":  status,
+		"user_id":   userID,
+		"status":    status,
+		"last_seen": nowMs,
+		"is_online": status == "online",
 	}
 
 	for rows.Next() {

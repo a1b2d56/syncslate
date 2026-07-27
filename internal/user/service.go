@@ -17,7 +17,7 @@ func NewService(db *sql.DB) *Service {
 
 func (s *Service) Search(query, currentUserID string) ([]models.UserProfile, error) {
 	rows, err := s.db.Query(`
-		SELECT id, username, display_name, bio, avatar_media_id, discoverable, ghost_mode
+		SELECT id, username, display_name, bio, avatar_media_id, discoverable, ghost_mode, last_seen
 		FROM users
 		WHERE discoverable = 1
 		  AND LOWER(username) LIKE LOWER(?)
@@ -35,7 +35,8 @@ func (s *Service) Search(query, currentUserID string) ([]models.UserProfile, err
 		var p models.UserProfile
 		var avatarID sql.NullString
 		var disc, ghost int
-		if err := rows.Scan(&p.ID, &p.Username, &p.DisplayName, &p.Bio, &avatarID, &disc, &ghost); err != nil {
+		var lastSeen sql.NullInt64
+		if err := rows.Scan(&p.ID, &p.Username, &p.DisplayName, &p.Bio, &avatarID, &disc, &ghost, &lastSeen); err != nil {
 			return nil, err
 		}
 		if avatarID.Valid {
@@ -44,6 +45,9 @@ func (s *Service) Search(query, currentUserID string) ([]models.UserProfile, err
 		p.Discoverable = disc == 1
 		p.GhostMode = ghost == 1
 		p.Status = "offline"
+		if lastSeen.Valid {
+			p.LastSeen = &lastSeen.Int64
+		}
 		profiles = append(profiles, p)
 	}
 
@@ -68,8 +72,9 @@ func (s *Service) GetByID(userID, requesterID string) (*models.UserProfile, erro
 	var p models.UserProfile
 	var avatarID sql.NullString
 	var disc, ghost int
-	err = s.db.QueryRow(`SELECT id, username, display_name, bio, avatar_media_id, discoverable, ghost_mode FROM users WHERE id = ?`, userID).
-		Scan(&p.ID, &p.Username, &p.DisplayName, &p.Bio, &avatarID, &disc, &ghost)
+	var lastSeen sql.NullInt64
+	err = s.db.QueryRow(`SELECT id, username, display_name, bio, avatar_media_id, discoverable, ghost_mode, last_seen FROM users WHERE id = ?`, userID).
+		Scan(&p.ID, &p.Username, &p.DisplayName, &p.Bio, &avatarID, &disc, &ghost, &lastSeen)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +85,9 @@ func (s *Service) GetByID(userID, requesterID string) (*models.UserProfile, erro
 	p.Discoverable = disc == 1
 	p.GhostMode = ghost == 1
 	p.Status = "offline"
+	if lastSeen.Valid {
+		p.LastSeen = &lastSeen.Int64
+	}
 
 	return &p, nil
 }

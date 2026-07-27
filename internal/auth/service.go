@@ -75,6 +75,11 @@ func (s *Service) Register(username, password, displayName string) (*AuthResult,
 		return nil, err
 	}
 
+	// Auto-create "Saved Messages" chat
+	savedChatID := uuid.New().String()
+	_, _ = s.db.Exec(`INSERT INTO chats (id, type, created_at, updated_at) VALUES (?, 'saved', ?, ?)`, savedChatID, now.UnixMilli(), now.UnixMilli())
+	_, _ = s.db.Exec(`INSERT INTO chat_members (chat_id, user_id, role, joined_at) VALUES (?, ?, 'owner', ?)`, savedChatID, userID, now.UnixMilli())
+
 	user := &models.User{
 		ID:           userID,
 		Username:     username,

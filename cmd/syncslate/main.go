@@ -15,6 +15,7 @@ import (
 	"syncslate/internal/config"
 	"syncslate/internal/contact"
 	"syncslate/internal/database"
+	"syncslate/internal/folder"
 	"syncslate/internal/group"
 	"syncslate/internal/health"
 	"syncslate/internal/media"
@@ -61,6 +62,7 @@ func main() {
 	requestService := request.NewService(db.DB)
 	chatService := chat.NewService(db.DB)
 	messageService := message.NewService(db.DB)
+	folderService := folder.NewService(db.DB)
 
 	mediaStore, err := media.NewFileSystemStore(cfg.UploadDir)
 	if err != nil {
@@ -80,8 +82,9 @@ func main() {
 	userHandler := user.NewHandler(userService)
 	contactHandler := contact.NewHandler(contactService)
 	requestHandler := request.NewHandler(requestService)
-	chatHandler := chat.NewHandler(chatService)
+	chatHandler := chat.NewHandler(chatService, wsHub)
 	messageHandler := message.NewHandler(messageService)
+	folderHandler := folder.NewHandler(folderService)
 	mediaHandler := media.NewHandler(mediaService)
 	groupHandler := group.NewHandler(groupService)
 	healthHandler := health.NewHandler()
@@ -138,6 +141,20 @@ func main() {
 		// Chats & Messages
 		r.Get("/api/v1/chats", chatHandler.ListChats)
 		r.Get("/api/v1/chats/{id}/messages", chatHandler.GetMessages)
+
+		// Chat Mutes & Pins
+		r.Post("/api/v1/chats/{id}/mute", chatHandler.Mute)
+		r.Post("/api/v1/chats/{id}/unmute", chatHandler.Unmute)
+		r.Post("/api/v1/chats/{id}/pin-chat", chatHandler.PinChat)
+		r.Post("/api/v1/chats/{id}/unpin-chat", chatHandler.UnpinChat)
+		r.Post("/api/v1/chats/{id}/pin", chatHandler.PinMessage)
+		r.Post("/api/v1/chats/{id}/unpin", chatHandler.UnpinMessage)
+
+		// Folders
+		r.Get("/api/v1/folders", folderHandler.List)
+		r.Post("/api/v1/folders", folderHandler.Create)
+		r.Put("/api/v1/folders/{id}", folderHandler.Update)
+		r.Delete("/api/v1/folders/{id}", folderHandler.Delete)
 
 		r.Post("/api/v1/messages", messageHandler.Create)
 		r.Put("/api/v1/messages/{id}", messageHandler.Edit)

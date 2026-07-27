@@ -19,7 +19,7 @@ func NewService(db *sql.DB) *Service {
 
 func (s *Service) GetContacts(ownerID string) ([]models.Contact, error) {
 	rows, err := s.db.Query(`
-		SELECT c.id, c.contact_id, c.created_at, u.username, u.display_name, u.bio, u.avatar_media_id, u.discoverable, u.ghost_mode
+		SELECT c.id, c.contact_id, c.created_at, u.username, u.display_name, u.bio, u.avatar_media_id, u.discoverable, u.ghost_mode, u.last_seen
 		FROM contacts c
 		JOIN users u ON c.contact_id = u.id
 		WHERE c.owner_id = ?
@@ -35,8 +35,9 @@ func (s *Service) GetContacts(ownerID string) ([]models.Contact, error) {
 		var createdAtMs int64
 		var avatarID sql.NullString
 		var disc, ghost int
+		var lastSeen sql.NullInt64
 
-		err := rows.Scan(&c.ID, &c.ContactID, &createdAtMs, &c.Profile.Username, &c.Profile.DisplayName, &c.Profile.Bio, &avatarID, &disc, &ghost)
+		err := rows.Scan(&c.ID, &c.ContactID, &createdAtMs, &c.Profile.Username, &c.Profile.DisplayName, &c.Profile.Bio, &avatarID, &disc, &ghost, &lastSeen)
 		if err != nil {
 			return nil, err
 		}
@@ -49,7 +50,11 @@ func (s *Service) GetContacts(ownerID string) ([]models.Contact, error) {
 		c.Profile.Discoverable = disc == 1
 		c.Profile.GhostMode = ghost == 1
 		c.Profile.Status = "offline"
+		if lastSeen.Valid {
+			c.Profile.LastSeen = &lastSeen.Int64
+		}
 		c.CreatedAt = time.UnixMilli(createdAtMs)
+		c.User = c.Profile
 
 		contacts = append(contacts, c)
 	}
@@ -76,6 +81,26 @@ func (s *Service) AddContact(ownerID, contactID string) (*models.Contact, error)
 	c.OwnerID = ownerID
 	c.ContactID = contactID
 	c.CreatedAt = now
+
+	// Fetch contact profile
+	var avatarID sql.NullString
+	var disc, ghost int
+	var lastSeen sql.NullInt64
+	err = s.db.QueryRow(`SELECT username, display_name, bio, avatar_media_id, discoverable, ghost_mode, last_seen FROM users WHERE id = ?`, contactID).
+		Scan(&c.Profile.Username, &c.Profile.DisplayName, &c.Profile.Bio, &avatarID, &disc, &ghost, &lastSeen)
+	if err == nil {
+		c.Profile.ID = contactID
+		if avatarID.Valid {
+			c.Profile.AvatarMediaID = &avatarID.String
+		}
+		c.Profile.Discoverable = disc == 1
+		c.Profile.GhostMode = ghost == 1
+		c.Profile.Status = "offline"
+		if lastSeen.Valid {
+			c.Profile.LastSeen = &lastSeen.Int64
+		}
+		c.User = c.Profile
+	}
 
 	return &c, nil
 }
