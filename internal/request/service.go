@@ -127,6 +127,70 @@ func (s *Service) AcceptRequest(requestID, recipientID string) (*models.Chat, er
 	return chat, nil
 }
 
+func (s *Service) CreateRequest(senderID, recipientID, initialMessage string) (*models.MessageRequest, error) {
+	if recipientID == "" {
+		return nil, errors.New("recipient_id is required")
+	}
+
+	if senderID == recipientID {
+		return nil, errors.New("cannot send message request to yourself")
+	}
+
+	var recipientExists bool
+	err := s.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM users WHERE id = ?)`, recipientID).Scan(&recipientExists)
+	if err != nil || !recipientExists {
+		return nil, errors.New("recipient not found")
+	}
+
+	// Check if blocked
+	var isBlocked bool
+	_ = s.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?))`,
+		senderID, recipientID, recipientID, senderID).Scan(&isBlocked)
+	if isBlocked {
+		return nil, errors.New("cannot send message request to this user")
+	}
+
+	reqID := uuid.New().String()
+	nowMs := time.Now().UnixMilli()
+
+	_, err = s.db.Exec(`INSERT INTO message_requests (id, sender_id, recipient_id, initial_message, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'pending', ?, ?)
+		ON CONFLICT(sender_id, recipient_id) DO UPDATE SET initial_message = excluded.initial_message, status = 'pending', updated_at = excluded.updated_at`,
+		reqID, senderID, recipientID, initialMessage, nowMs, nowMs)
+	if err != nil {
+		return nil, err
+	}
+
+	var mr models.MessageRequest
+	var createdAtMs, updatedAtMs int64
+	var avatarID sql.NullString
+	var disc, ghost int
+
+	err = s.db.QueryRow(`
+		SELECT r.id, r.sender_id, r.recipient_id, r.initial_message, r.status, r.created_at, r.updated_at,
+		       u.username, u.display_name, u.bio, u.avatar_media_id, u.discoverable, u.ghost_mode
+		FROM message_requests r
+		JOIN users u ON r.sender_id = u.id
+		WHERE r.sender_id = ? AND r.recipient_id = ?`, senderID, recipientID).
+		Scan(&mr.ID, &mr.SenderID, &mr.RecipientID, &mr.InitialMessage, &mr.Status, &createdAtMs, &updatedAtMs,
+			&mr.Sender.Username, &mr.Sender.DisplayName, &mr.Sender.Bio, &avatarID, &disc, &ghost)
+	if err != nil {
+		return nil, err
+	}
+
+	mr.Sender.ID = mr.SenderID
+	if avatarID.Valid {
+		mr.Sender.AvatarMediaID = &avatarID.String
+	}
+	mr.Sender.Discoverable = disc == 1
+	mr.Sender.GhostMode = ghost == 1
+	mr.Sender.Status = "offline"
+	mr.CreatedAt = time.UnixMilli(createdAtMs)
+	mr.UpdatedAt = time.UnixMilli(updatedAtMs)
+
+	return &mr, nil
+}
+
 func (s *Service) DeclineRequest(requestID, recipientID string, block bool) error {
 	var senderID string
 	err := s.db.QueryRow(`SELECT sender_id FROM message_requests WHERE id = ? AND recipient_id = ?`, requestID, recipientID).Scan(&senderID)

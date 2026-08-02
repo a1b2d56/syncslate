@@ -21,6 +21,13 @@ type declineReq struct {
 	Block bool `json:"block"`
 }
 
+type createReq struct {
+	RecipientID       string `json:"recipient_id"`
+	RecipientIDAlt    string `json:"recipientId"`
+	InitialMessage    string `json:"initial_message"`
+	InitialMessageAlt string `json:"initialMessage"`
+}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserIDFromContext(r.Context())
 	reqs, err := h.service.GetRequests(userID)
@@ -31,6 +38,34 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(reqs)
+}
+
+func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserIDFromContext(r.Context())
+	var req createReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":{"code":"VALIDATION_ERROR","message":"invalid json body"}}`, http.StatusBadRequest)
+		return
+	}
+
+	recipientID := req.RecipientID
+	if recipientID == "" {
+		recipientID = req.RecipientIDAlt
+	}
+	initialMessage := req.InitialMessage
+	if initialMessage == "" {
+		initialMessage = req.InitialMessageAlt
+	}
+
+	msgReq, err := h.service.CreateRequest(userID, recipientID, initialMessage)
+	if err != nil {
+		http.Error(w, `{"error":{"code":"BAD_REQUEST","message":"`+err.Error()+`"}}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(msgReq)
 }
 
 func (h *Handler) Accept(w http.ResponseWriter, r *http.Request) {

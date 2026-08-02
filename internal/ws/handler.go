@@ -3,6 +3,7 @@ package ws
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"syncslate/internal/auth"
@@ -56,7 +57,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := h.authService.ValidateToken(authPayload.Token)
+	rawToken := authPayload.Token
+	if rawToken == "" {
+		if qToken := r.URL.Query().Get("token"); qToken != "" {
+			rawToken = qToken
+		} else if qToken := r.URL.Query().Get("access_token"); qToken != "" {
+			rawToken = qToken
+		} else if authHeader := r.Header.Get("Authorization"); authHeader != "" {
+			rawToken = authHeader
+		}
+	}
+
+	tokenStr := strings.TrimSpace(strings.TrimPrefix(rawToken, "Bearer "))
+	userID, err := h.authService.ValidateToken(tokenStr)
 	if err != nil {
 		conn.WriteJSON(map[string]interface{}{"type": EventAuthError, "message": "invalid or expired token"})
 		conn.Close()

@@ -71,3 +71,26 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", "inline; filename="+media.FileName)
 	_, _ = io.Copy(w, reader)
 }
+
+func (h *Handler) GetInfo(w http.ResponseWriter, r *http.Request) {
+	mediaID := chi.URLParam(r, "mediaId")
+
+	media, reader, err := h.service.Get(mediaID)
+	if err != nil {
+		http.Error(w, `{"error":{"code":"NOT_FOUND","message":"media not found"}}`, http.StatusNotFound)
+		return
+	}
+	reader.Close()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":          media.ID,
+		"media_id":    media.ID,
+		"uploader_id": media.UploaderID,
+		"file_name":   media.FileName,
+		"file_type":   media.FileType,
+		"file_size":   media.FileSize,
+		"url":         "/api/v1/media/" + media.ID,
+		"created_at":  media.CreatedAt.UnixMilli(),
+	})
+}

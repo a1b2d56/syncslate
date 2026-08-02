@@ -135,6 +135,7 @@ func main() {
 
 		// Message Requests
 		r.Get("/api/v1/message-requests", requestHandler.List)
+		r.Post("/api/v1/message-requests", requestHandler.Create)
 		r.Post("/api/v1/message-requests/{id}/accept", requestHandler.Accept)
 		r.Post("/api/v1/message-requests/{id}/decline", requestHandler.Decline)
 
@@ -168,6 +169,7 @@ func main() {
 		// Media Upload & Serving
 		r.Post("/api/v1/media/upload", mediaHandler.Upload)
 		r.Get("/api/v1/media/{mediaId}", mediaHandler.Download)
+		r.Get("/api/v1/media/{mediaId}/info", mediaHandler.GetInfo)
 	})
 
 	// 5. Server Lifecyle

@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type User struct {
 	ID            string    `json:"id"`
@@ -131,4 +134,108 @@ type ChatFolder struct {
 	ChatIDs     []string `json:"chatIds"`
 	CreatedAt   int64    `json:"createdAt"`
 	UpdatedAt   int64    `json:"updatedAt"`
+}
+
+func (cf ChatFolder) MarshalJSON() ([]byte, error) {
+	type Alias ChatFolder
+	chatIDs := cf.ChatIDs
+	if chatIDs == nil {
+		chatIDs = []string{}
+	}
+	return json.Marshal(&struct {
+		Alias
+		UserIDSnake      string   `json:"user_id"`
+		UserIDCamel      string   `json:"userId"`
+		FilterFlagsSnake int      `json:"filter_flags"`
+		FilterFlagsCamel int      `json:"filterFlags"`
+		FolderOrderSnake int      `json:"folder_order"`
+		FolderOrderCamel int      `json:"folderOrder"`
+		ChatIDsSnake     []string `json:"chat_ids"`
+		ChatIDsCamel     []string `json:"chatIds"`
+		CreatedAtSnake   int64    `json:"created_at"`
+		CreatedAtCamel   int64    `json:"createdAt"`
+		UpdatedAtSnake   int64    `json:"updated_at"`
+		UpdatedAtCamel   int64    `json:"updatedAt"`
+	}{
+		Alias:            Alias(cf),
+		UserIDSnake:      cf.UserID,
+		UserIDCamel:      cf.UserID,
+		FilterFlagsSnake: cf.FilterFlags,
+		FilterFlagsCamel: cf.FilterFlags,
+		FolderOrderSnake: cf.FolderOrder,
+		FolderOrderCamel: cf.FolderOrder,
+		ChatIDsSnake:     chatIDs,
+		ChatIDsCamel:     chatIDs,
+		CreatedAtSnake:   cf.CreatedAt,
+		CreatedAtCamel:   cf.CreatedAt,
+		UpdatedAtSnake:   cf.UpdatedAt,
+		UpdatedAtCamel:   cf.UpdatedAt,
+	})
+}
+
+func (cf *ChatFolder) UnmarshalJSON(data []byte) error {
+	type Alias ChatFolder
+	aux := &struct {
+		*Alias
+		UserIDSnake      *string   `json:"user_id"`
+		UserIDCamel      *string   `json:"userId"`
+		FilterFlagsSnake *int      `json:"filter_flags"`
+		FilterFlagsCamel *int      `json:"filterFlags"`
+		FolderOrderSnake *int      `json:"folder_order"`
+		FolderOrderCamel *int      `json:"folderOrder"`
+		ChatIDsSnake     *[]string `json:"chat_ids"`
+		ChatIDsCamel     *[]string `json:"chatIds"`
+		CreatedAtSnake   *int64    `json:"created_at"`
+		CreatedAtCamel   *int64    `json:"createdAt"`
+		UpdatedAtSnake   *int64    `json:"updated_at"`
+		UpdatedAtCamel   *int64    `json:"updatedAt"`
+	}{
+		Alias: (*Alias)(cf),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if aux.UserIDSnake != nil {
+		cf.UserID = *aux.UserIDSnake
+	} else if aux.UserIDCamel != nil {
+		cf.UserID = *aux.UserIDCamel
+	}
+
+	if aux.FilterFlagsSnake != nil {
+		cf.FilterFlags = *aux.FilterFlagsSnake
+	} else if aux.FilterFlagsCamel != nil {
+		cf.FilterFlags = *aux.FilterFlagsCamel
+	}
+
+	if aux.FolderOrderSnake != nil {
+		cf.FolderOrder = *aux.FolderOrderSnake
+	} else if aux.FolderOrderCamel != nil {
+		cf.FolderOrder = *aux.FolderOrderCamel
+	}
+
+	if aux.ChatIDsSnake != nil {
+		cf.ChatIDs = *aux.ChatIDsSnake
+	} else if aux.ChatIDsCamel != nil {
+		cf.ChatIDs = *aux.ChatIDsCamel
+	}
+
+	if aux.CreatedAtSnake != nil {
+		cf.CreatedAt = *aux.CreatedAtSnake
+	} else if aux.CreatedAtCamel != nil {
+		cf.CreatedAt = *aux.CreatedAtCamel
+	}
+
+	if aux.UpdatedAtSnake != nil {
+		cf.UpdatedAt = *aux.UpdatedAtSnake
+	} else if aux.UpdatedAtCamel != nil {
+		cf.UpdatedAt = *aux.UpdatedAtCamel
+	}
+
+	if cf.ChatIDs == nil {
+		cf.ChatIDs = []string{}
+	}
+
+	return nil
 }
